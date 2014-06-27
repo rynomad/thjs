@@ -5,7 +5,7 @@ var debug = function(){};
 //var debug = function(){console.log.apply(console,arguments)};
 exports.debug = function(cb){ debug = cb; };
 var info = function(){};
-//var debug = function(){console.log.apply(console,arguments)};
+var debug = function(){console.log.apply(console,arguments)};
 exports.info = function(cb){ info = cb; };
 
 var defaults = exports.defaults = {};
@@ -252,7 +252,7 @@ function linkMaint(self)
 function isBridge(arg)
 {
   var self = this;
-  if(arg === true) self.bridging = true;  
+  if(arg === true) self.bridging = true;
   if(self.bridging) return true;
   if(!arg) return self.bridging;
 
@@ -272,6 +272,7 @@ function addSeed(arg) {
   });
   seed.isSeed = true;
   self.seeds.push(seed);
+  console.log("SEED", seed)
 }
 
 function online(callback)
@@ -361,7 +362,7 @@ function receive(msg, path)
     }else{
       from.openDup = 0;
     }
-    
+
     // always minimally flag activity and send an open ack back via network or relay
     var openAck = from.open(); // inits line crypto
     from.active();
@@ -447,7 +448,7 @@ function whokey(parts, key, keys)
     return false;
   }
   hn.parts = parts;
-  
+
   return hn;
 }
 
@@ -516,7 +517,7 @@ function whois(hashname)
     if(!pathValid(hn.to) && pathValid(path)) hn.to = path;
     return path;
   }
-  
+
   hn.pathEnd = function(path)
   {
     if(path.seed) return false; // never remove a seed-path
@@ -545,7 +546,7 @@ function whois(hashname)
         hn.ip = path.ip;
         hn.port = path.port;
       }
-      
+
       // cull any invalid paths of the same type
       hn.paths.forEach(function(other){
         if(other == path) return;
@@ -556,7 +557,7 @@ function whois(hashname)
         // remove any previous http path entirely
         if(path.type == "http") return hn.pathEnd(other);
       });
-      
+
       // any custom non-public paths, we must bridge for
       if(pathShareOrder.indexOf(path.type) == -1) hn.bridging = true;
 
@@ -574,7 +575,7 @@ function whois(hashname)
 
     return path;
   }
-  
+
   // track whenever a hashname is active
   hn.active = function()
   {
@@ -591,7 +592,7 @@ function whois(hashname)
     });
     hn.sendwait = [];
   }
-  
+
   // try to send a packet to a hashname, doing whatever is possible/necessary
   hn.send = function(packet){
     if(Buffer.isBuffer(packet)) console.log("lined packet?!",hn.hashname,typeof hn.sendwait.length,new Error().stack);
@@ -613,7 +614,7 @@ function whois(hashname)
 
       // everything else falls through
     }
-    
+
     // we've fallen through, either no line, or no valid paths
     hn.openAt = false;
 
@@ -625,6 +626,7 @@ function whois(hashname)
 
     // always send to open all known paths to increase restart-resiliency
     if(hn.open()) hn.paths.forEach(function(path){
+      console.log("WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWw", hn.open())
       self.send(path, hn.open(), hn);
     });
 
@@ -686,7 +688,7 @@ function whois(hashname)
     var chan = hn[kind](packet.js.type, {bare:true,id:packet.js.c}, listening[packet.js.type]);
     chan.receive(packet);
   }
-  
+
   hn.chanEnded = function(id)
   {
     if(!hn.chans[id]) return;
@@ -749,7 +751,7 @@ function whois(hashname)
     });
 
     if(self.isBridge(hn)) js.bridges = self.paths.filter(function(path){return !isLocalPath(path)}).map(function(path){return path.type});
-
+    //debug("hn.linke", hn, hn.linked)
     if(hn.linked)
     {
       hn.linked.send({js:js});
@@ -818,7 +820,7 @@ function whois(hashname)
         self.pub4 = {type:"ipv4", ip:packet.js.path.ip, port:parseInt(packet.js.path.port)};
         self.pathSet(self.pub4);
       }
-      
+
       if(!packet.sender) return; // no sender path is bad
 
       // add to all answers and update best default from active ones
@@ -833,7 +835,7 @@ function whois(hashname)
       hn.to = best;
     });
   }
-  
+
   // create a ticket buffer to this hn w/ this packet
   hn.ticket = function(packet)
   {
@@ -978,7 +980,7 @@ function raw(type, arg, callback)
     timer();
   }
   chan.timeout(arg.timeout || defaults.chan_timeout);
-  
+
   chan.hashname = hn.hashname; // for convenience
 
   debug("new unreliable channel",hn.hashname,chan.type,chan.id);
@@ -1006,7 +1008,7 @@ function raw(type, arg, callback)
     debug("SEND",chan.type,JSON.stringify(packet.js),packet.body&&packet.body.length);
     hn.send(packet);
   }
-  
+
   // convenience
   chan.end = function()
   {
@@ -1066,7 +1068,7 @@ function channel(type, arg, callback)
   chan.hashname = hn.hashname; // for convenience
 
   debug("new channel",hn.hashname,chan.type,chan.id);
-  
+
   // configure default timeout, for resend
   chan.timeout = function(timeout)
   {
@@ -1335,13 +1337,13 @@ function inRelay(chan, packet)
     if(to.relayChan == chan) to.relayChan = false;
     return;
   }
-  
+
   // clear any older default paths
   if(to.to && to.to.recvAt < chan.startAt) to.to = false;
-  
+
   // most recent is always the current default back
   to.relayChan = chan;
-  
+
   // if the sender has created a bridge, clone their path as the packet's origin!
   var path = (packet.js.bridge) ? JSON.parse(JSON.stringify(packet.sender.json)) : false;
   if(packet.body && packet.body.length) self.receive(packet.body, path);
@@ -1370,7 +1372,7 @@ function inConnect(err, packet, chan)
 
   // send back an open through the connect too
   chan.send({body:to.open()});
-  
+
   // we know they see them too
   packet.from.sees(to.hashname);
 }
@@ -1428,7 +1430,7 @@ function inPeer(err, packet, chan)
   if(!isHEX(packet.js.peer, 64)) return;
   var peer = self.whois(packet.js.peer);
   if(!peer) return;
-  
+
   // only accept peer if active network or support bridging for either party
   if(!(pathValid(peer.to) || self.isBridge(packet.from.hashname) || self.isBridge(peer.hashname))) return debug("disconnected peer request");
 
@@ -1845,7 +1847,7 @@ function deticketize(self, from, open)
   if(!self.CSets[csid] || csid != from.csid) ret = {err:"invalid CSID of "+csid};
   else{
     open.from = from;
-    try{ret = self.CSets[csid].deopenize(self, open);}catch(E){ret = {err:E};}    
+    try{ret = self.CSets[csid].deopenize(self, open);}catch(E){ret = {err:E};}
   }
   if(ret.err || !ret.inner)
   {
@@ -1869,6 +1871,8 @@ function openize(self, to)
   inner.to = to.hashname;
   inner.from = self.parts;
   inner.line = to.lineOut;
+
+  console.log("OPENIZE  to, inner", self)
   return self.CSets[to.csid].openize(self, to, inner);
 }
 

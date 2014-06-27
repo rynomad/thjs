@@ -12,3 +12,5 @@ var debug    = require("./lib/debug.js").debug
     , defaults : defaults
     , switch   : Switch
   }
+
+module.exports = exports
